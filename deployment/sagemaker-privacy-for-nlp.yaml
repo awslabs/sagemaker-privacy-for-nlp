@@ -1,0 +1,600 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: >-
+  (SA0005) - sagemaker-privacy-for-nlp: Solution for training NLP models that
+  enhance user privacy using Amazon SageMaker. Version 1
+Parameters:
+  SolutionPrefix:
+    Type: String
+    Description: |
+      Used to name resources created as part of this stack (and inside nested stacks too).
+      Can be the same as the stack name used by AWS CloudFormation, but this field has extra
+      constraints because it's used to name resources with restrictions (e.g. Amazon S3 bucket
+      names cannot contain capital letters).
+    AllowedPattern: '^sagemaker-soln-pnlp[a-z0-9\-]{0,30}$'
+    ConstraintDescription: |
+      Should also start with 'sagemaker-soln-pnlp' for permission management, followed by
+      up to 30 characters.
+      Only allowed to use lowercase letters, hyphens and/or numbers.
+    Default: "sagemaker-soln-pnlp"
+  CreateSageMakerNotebookInstance:
+    Description: Create a SageMaker Notebook Instance as part of the stack?
+    Type: String
+    Default: 'true'
+    AllowedValues:
+      - 'true'
+      - 'false'
+  IamRole:
+    Type: String
+    Default: ""
+    Description: |
+      The ARN of the IAM Role that will be attached to the resources created by this stack to grant them permissions to
+      perform their required functions. If left blank, the template will attempt to create a role for you.
+      That could cause a stack creation error if you don't have privileges to create new roles.
+  StackVersion:
+    Description: |
+      CloudFormation Stack version.
+      Use 'release' version unless you are customizing the
+      CloudFormation templates and solution artifacts.
+    Type: String
+    Default: release
+    AllowedValues:
+      - release
+      - development
+  SolutionName:
+    Description: |
+      Name for the solution. Should be sagemaker-privacy-for-nlp or begin with 'sagemaker-privacy-for-nlp-' followed by a set of letters and hyphens.
+      Used to specify a particular version of the solution to launch, can be used for different branches.
+    Type: String
+    Default: "sagemaker-privacy-for-nlp"
+    AllowedPattern: '^sagemaker-privacy-for-nlp-?[a-z\-]*$'
+  BuildSageMakerContainersRemotely:
+    Description: |
+      Whether to launch a CodeBuild project to build SageMaker containers.
+      If set to 'true' SageMaker notebook will use the CodeBuild project to launch a build job for SageMaker containers.
+      If set to 'false' SageMaker notebook will attempt to build solution containers within the notebook instance.
+      This may lead to some unexpected issues as docker isn't installed in SageMaker Studio containers.
+    Type: String
+    AllowedValues:
+      - "true"
+      - "false"
+    Default: "false"
+  SageMakerProcessingJobContainerName:
+    Description: Name of the SageMaker processing job ECR Container
+    Type: String
+    Default:  "sagemaker-soln-privacy-preprocessing"
+  TestOutputsS3Bucket:
+    Description: |
+      This bucket is used to store output files when the solution is tested. Should be left blank, unless this is an automated launch.
+    Type: String
+    Default: ""
+    AllowedPattern: '^$|^sagemaker-soln-[a-z0-9\-\.]{1,48}$'
+
+
+Metadata:
+  'AWS::CloudFormation::Interface':
+    ParameterGroups:
+      - Label:
+          default: Solution Configuration
+        Parameters:
+          - SolutionPrefix
+          - CreateSageMakerNotebookInstance
+          - StackVersion
+Mappings:
+  SolutionsS3BucketName:
+    development:
+      Prefix: sagemaker-solutions-build
+    release:
+      Prefix: sagemaker-solutions-prod
+  CodeBuild:
+    ProcessingContainer:
+      S3Key: "build/sagemaker_data_privatization.zip"
+  ProcessingInstanceType:
+    af-south-1:
+        Type: ml.m5.4xlarge
+    ap-east-1:
+        Type: ml.m5.4xlarge
+    ap-northeast-1:
+        Type: ml.p3.2xlarge
+    ap-northeast-2:
+        Type: ml.p3.2xlarge
+    ap-south-1:
+        Type: ml.p2.xlarge
+    ap-southeast-1:
+        Type: ml.p3.2xlarge
+    ap-southeast-2:
+        Type: ml.p3.2xlarge
+    ca-central-1:
+        Type: ml.p3.2xlarge
+    cn-north-1:
+        Type: ml.p3.2xlarge
+    cn-northwest-1:
+        Type: ml.p3.2xlarge
+    eu-central-1:
+        Type: ml.p3.2xlarge
+    eu-north-1:
+        Type: ml.m5.4xlarge
+    eu-south-1:
+        Type: ml.m5.4xlarge
+    eu-west-1:
+        Type: ml.p3.2xlarge
+    eu-west-2:
+        Type: ml.p3.2xlarge
+    eu-west-3:
+        Type: ml.m5.4xlarge
+    me-south-1:
+        Type: ml.m5.4xlarge
+    sa-east-1:
+        Type: ml.m5.4xlarge
+    us-east-1:
+        Type: ml.p3.2xlarge
+    us-east-2:
+        Type: ml.p3.2xlarge
+    us-west-1:
+        Type: ml.m5.4xlarge
+    us-west-2:
+        Type: ml.p3.2xlarge
+  TrainingInstanceType:
+    af-south-1:
+        Type: ml.g4dn.4xlarge
+    ap-east-1:
+        Type: ml.g4dn.4xlarge
+    ap-northeast-1:
+        Type: ml.p3.2xlarge
+    ap-northeast-2:
+        Type: ml.p3.2xlarge
+    ap-south-1:
+        Type: ml.p2.xlarge
+    ap-southeast-1:
+        Type: ml.p3.2xlarge
+    ap-southeast-2:
+        Type: ml.p3.2xlarge
+    ca-central-1:
+        Type: ml.p3.2xlarge
+    cn-north-1:
+        Type: ml.p3.2xlarge
+    cn-northwest-1:
+        Type: ml.p3.2xlarge
+    eu-central-1:
+        Type: ml.p3.2xlarge
+    eu-north-1:
+        Type: ml.g4dn.4xlarge
+    eu-south-1:
+        Type: ml.g4dn.4xlarge
+    eu-west-1:
+        Type: ml.p3.2xlarge
+    eu-west-2:
+        Type: ml.p3.2xlarge
+    eu-west-3:
+        Type: ml.g4dn.4xlarge
+    me-south-1:
+        Type: ml.g4dn.4xlarge
+    sa-east-1:
+        Type: ml.g4dn.4xlarge
+    us-east-1:
+        Type: ml.p3.2xlarge
+    us-east-2:
+        Type: ml.p3.2xlarge
+    us-west-1:
+        Type: ml.g4dn.4xlarge
+    us-west-2:
+        Type: ml.p3.2xlarge
+  NotebookInstanceType:
+    "af-south-1":
+        Type: ml.t3.medium
+    "ap-east-1":
+        Type: ml.t3.medium
+    "ap-northeast-1":
+        Type: ml.t3.medium
+    "ap-northeast-2":
+        Type: ml.t2.medium
+    "ap-south-1":
+        Type: ml.t2.medium
+    "ap-southeast-1":
+        Type: ml.t3.medium
+    "ap-southeast-2":
+        Type: ml.t3.medium
+    "ca-central-1":
+        Type: ml.t3.medium
+    "eu-central-1":
+        Type: ml.t3.medium
+    "eu-north-1":
+        Type: ml.t3.medium
+    "eu-south-1":
+        Type: ml.t3.medium
+    "eu-west-1":
+        Type: ml.t3.medium
+    "eu-west-2":
+        Type: ml.t3.medium
+    "eu-west-3":
+        Type: ml.t3.medium
+    "me-south-1":
+        Type: ml.t3.medium
+    "sa-east-1":
+        Type: ml.t3.medium
+    "us-east-1":
+        Type: ml.t3.medium
+    "us-east-2":
+        Type: ml.t3.medium
+    "us-west-1":
+        Type: ml.t3.medium
+    "us-west-2":
+        Type: ml.t3.medium
+
+
+Conditions:
+  CreateSageMakerNotebookInstance: !Equals [ !Ref CreateSageMakerNotebookInstance, 'true' ]
+  CreateCustomSolutionRole: !Equals [!Ref IamRole, ""]
+  CreateCodeBuildProject: !Equals [!Ref BuildSageMakerContainersRemotely, "true"]
+  AddTestBucketPermissions: !Not [!Equals [!Ref TestOutputsS3Bucket, ""]]
+
+Resources:
+  ModelDataBucket:
+    Type: 'AWS::S3::Bucket'
+    Properties:
+      BucketName: !Sub ${SolutionPrefix}-${AWS::AccountId}-md
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W35
+            reason: >-
+              Configuring logging requires supplying an existing customer S3
+              bucket to store logs
+          - id: W51
+            reason: Default policy works fine
+  BasicNotebookInstance:
+    Type: 'AWS::SageMaker::NotebookInstance'
+    Condition: CreateSageMakerNotebookInstance
+    Properties:
+      InstanceType: !FindInMap [NotebookInstanceType, !Ref "AWS::Region", Type]
+      NotebookInstanceName: !Sub "${SolutionPrefix}-notebook-instance"
+      RoleArn: !If [CreateCustomSolutionRole, !GetAtt NotebookInstanceExecutionRole.Arn, !Ref IamRole]
+      LifecycleConfigName: !GetAtt
+        - BasicNotebookInstanceLifecycleConfig
+        - NotebookInstanceLifecycleConfigName
+      VolumeSizeInGB: 128
+    DependsOn:
+      - NotebookInstanceIAMPolicy
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W1201
+            reason: Solution does not have KMS encryption enabled by default
+  BasicNotebookInstanceLifecycleConfig:
+    Type: 'AWS::SageMaker::NotebookInstanceLifecycleConfig'
+    Condition: CreateSageMakerNotebookInstance
+    DependsOn:
+      - ModelDataBucket
+    Properties:
+      NotebookInstanceLifecycleConfigName: !Sub "${SolutionPrefix}-nb-lifecycle-config"
+      OnCreate:
+        - Content:
+            Fn::Base64: !Sub
+            - |
+                set -e
+                # perform following actions as ec2-user
+                sudo -u ec2-user -i <<EOF
+                cd /home/ec2-user/SageMaker
+                # copy source files
+                aws s3 sync s3://${SolutionsS3BucketNamePrefix}-${AWS::Region}/${SolutionName}/source .
+                # copy test files
+                aws s3 sync s3://${SolutionsS3BucketNamePrefix}-${AWS::Region}/${SolutionName}/test ./test
+                # create stack_outputs.json with stack resources that are required in notebook(s)
+                touch stack_outputs.json
+                echo '{' >> stack_outputs.json
+                echo '  "SolutionPrefix": "${SolutionPrefix}",' >> stack_outputs.json
+                echo '  "AwsAccountId": "${AWS::AccountId}",' >> stack_outputs.json
+                echo '  "AwsRegion": "${AWS::Region}",' >> stack_outputs.json
+                echo '  "IamRole": "${NotebookInstanceExecutionRole.Arn}",' >> stack_outputs.json
+                echo '  "ModelDataBucket": "${ModelDataBucket}",' >> stack_outputs.json
+                echo '  "SolutionsS3Bucket": "${SolutionsS3BucketNamePrefix}",' >> stack_outputs.json
+                echo '  "SagemakerMode": "NotebookInstance",' >> stack_outputs.json
+                echo '  "TestOutputsS3Bucket": "${TestOutputsS3Bucket}",' >> stack_outputs.json
+                echo '  "TrainingInstanceType": "${TrainingInstanceType}",' >> stack_outputs.json
+                echo '  "ProcessingInstanceType": "${ProcessingInstanceType}",' >> stack_outputs.json
+                echo '  "SolutionName": "${SolutionName}",' >> stack_outputs.json
+                echo '  "StackName": "${AWS::StackName}",' >> stack_outputs.json
+                echo '  "SageMakerProcessingJobContainerBuild": "${SageMakerProcessingJobContainerCodeBuild}",' >> stack_outputs.json
+                echo '  "SageMakerProcessingJobContainerName": "${SageMakerProcessingJobContainerName}"' >> stack_outputs.json
+                echo '}' >> stack_outputs.json
+                echo "stack_outputs.json created:"
+                cat stack_outputs.json
+                EOF
+            - SolutionsS3BucketNamePrefix:
+                !FindInMap [SolutionsS3BucketName, Ref: StackVersion, Prefix]
+              SageMakerProcessingJobContainerCodeBuild:
+                !If [CreateCodeBuildProject, !Ref ProcessingJobContainerBuild, "local"]
+              ProcessingInstanceType:
+                !FindInMap [ProcessingInstanceType, !Ref "AWS::Region", Type]
+              TrainingInstanceType:
+                !FindInMap [TrainingInstanceType, !Ref "AWS::Region", Type]
+      OnStart:
+        - Content:
+            Fn::Base64: |
+              #!/bin/bash
+              set -e
+              # perform following actions as ec2-user
+              sudo -u ec2-user -i <<EOF
+              cd /home/ec2-user/SageMaker
+              /home/ec2-user/anaconda3/envs/python3/bin/python /home/ec2-user/SageMaker/env_setup.py --force --log-level DEBUG
+              for nb in sagemaker/*.ipynb; do python ./scripts/set_kernelspec.py --notebook "$nb" --kernel "conda_python3" --display-name "conda_python3"; done
+              # Optionally run the solution's notebook if this was an integration test launch
+              nohup /home/ec2-user/anaconda3/envs/python3/bin/python ./test/run_notebook.py > ./test/run_notebook.log 2>&1 &
+              echo "OnStart script completed!"
+              EOF
+  NotebookInstanceExecutionRole:
+    Type: 'AWS::IAM::Role'
+    Condition: CreateCustomSolutionRole
+    Properties:
+      RoleName: !Sub "${SolutionPrefix}-${AWS::Region}-nb-role"
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - sagemaker.amazonaws.com
+                - codebuild.amazonaws.com
+                - lambda.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W28
+            reason: Needs to be explicitly named to tighten launch permissions policy
+  NotebookInstanceIAMPolicy:
+    Type: 'AWS::IAM::Policy'
+    Condition: CreateCustomSolutionRole
+    Properties:
+      PolicyName: !Sub "${SolutionPrefix}-nb-instance-policy"
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          # Can list the contents of the SageMaker Solutions Amazon S3 Bucket
+          - Effect: Allow
+            Action:
+              - s3:ListBucket
+            Resource:
+              - !Sub
+                - "arn:aws:s3:::${SolutionsS3BucketNamePrefix}-${AWS::Region}"
+                - SolutionsS3BucketNamePrefix:
+                    !FindInMap [SolutionsS3BucketName, Ref: StackVersion, Prefix]
+          # Can get objects from the SageMaker Solutions Amazon S3 Bucket
+          - Effect: Allow
+            Action:
+              - s3:GetObject
+              - s3:GetObjectVersion
+            Resource:
+              - !Sub
+                - "arn:aws:s3:::${SolutionsS3BucketNamePrefix}-${AWS::Region}/*"
+                - SolutionsS3BucketNamePrefix:
+                    !FindInMap [SolutionsS3BucketName, Ref: StackVersion, Prefix]
+          - Effect: Allow
+            Action:
+              - 's3:AbortMultipartUpload'
+              - 's3:ListBucketMultipartUploads'
+              - 's3:GetBucketLocation'
+              - 's3:ListBucket'
+              - 's3:GetObject'
+              - 's3:PutObject'
+              - 's3:DeleteObject'
+              - 's3:DeleteBucket'
+            Resource:
+              - !Sub "arn:aws:s3:::${ModelDataBucket}"
+              - !Sub "arn:aws:s3:::${ModelDataBucket}/*"
+              - !If
+                  - AddTestBucketPermissions
+                  - !Sub "arn:aws:s3:::${TestOutputsS3Bucket}/*"
+                  - !Ref "AWS::NoValue"
+              - !If
+                  - AddTestBucketPermissions
+                  - !Sub "arn:aws:s3:::${TestOutputsS3Bucket}"
+                  - !Ref "AWS::NoValue"
+          - Effect: Allow
+            Action:
+              - 'sagemaker:CreateProcessingJob'
+              - 'sagemaker:DescribeProcessingJob'
+              - 'sagemaker:CreateTrainingJob'
+              - 'sagemaker:DescribeTrainingJob'
+              - 'sagemaker:CreateModel'
+              - 'sagemaker:DescribeModel'
+              - 'sagemaker:DeleteModel'
+              - 'sagemaker:ListTags'
+            Resource: !Sub "arn:aws:sagemaker:${AWS::Region}:${AWS::AccountId}:*"
+          - Effect: Allow
+            Action:
+              - 'ecr:GetAuthorizationToken'
+            Resource:
+              - "*"
+          - Effect: Allow
+            Action:
+              - ecr:CreateRepository
+              - ecr:CompleteLayerUpload
+              - ecr:UploadLayerPart
+              - ecr:InitiateLayerUpload
+              - ecr:PutImage
+              - ecr:GetDownloadUrlForLayer
+              - ecr:BatchGetImage
+              - ecr:BatchCheckLayerAvailability
+              - ecr:DescribeImages
+              - ecr:BatchDeleteImage
+            Resource:
+              - !Sub "arn:aws:ecr:${AWS::Region}:${AWS::AccountId}:repository/*"
+          - Effect: Allow
+            Action:
+              - 'ec2:CreateVpcEndpoint'
+              - 'ec2:DescribeRouteTables'
+            Resource: '*'
+          - Effect: Allow
+            Action:
+              - 'cloudwatch:PutMetricData'
+              - 'cloudwatch:GetMetricData'
+              - 'cloudwatch:GetMetricStatistics'
+              - 'cloudwatch:ListMetrics'
+            Resource: !Sub "arn:aws:cloudwatch:${AWS::Region}:${AWS::AccountId}:*"
+          - Effect: Allow
+            Action:
+              - 'logs:CreateLogGroup'
+              - 'logs:CreateLogStream'
+              - 'logs:DescribeLogStreams'
+              - 'logs:GetLogEvents'
+              - 'logs:PutLogEvents'
+            Resource:
+              - !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/sagemaker/*"
+              - !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/*"
+          - Effect: Allow
+            Action:
+              - 'iam:PassRole'
+            Resource:
+              - !GetAtt
+                - NotebookInstanceExecutionRole
+                - Arn
+            Condition:
+              StringEquals:
+                'iam:PassedToService': sagemaker.amazonaws.com
+          - Effect: Allow
+            Action:
+              - 'iam:GetRole'
+            Resource:
+              - !GetAtt
+                - NotebookInstanceExecutionRole
+                - Arn
+          - Effect: Allow
+            Action:
+              - s3:CreateBucket
+              - s3:ListBucket
+              - s3:GetObject
+              - s3:GetObjectVersion
+              - s3:PutObject
+              - s3:DeleteObject
+            Resource:
+              - !Sub "arn:aws:s3:::sagemaker-${AWS::Region}-${AWS::AccountId}"
+              - !Sub "arn:aws:s3:::sagemaker-${AWS::Region}-${AWS::AccountId}/*"
+          # Only needed if we use CodeBuild for container builds
+          - !If
+            - CreateCodeBuildProject
+            - Effect: Allow
+              Action:
+                - codebuild:BatchGetBuilds
+                - codebuild:StartBuild
+              Resource:
+                - !Sub "arn:aws:codebuild:${AWS::Region}:${AWS::AccountId}:project/${ProcessingJobContainerBuild}"
+                - !Sub "arn:aws:codebuild:${AWS::Region}:${AWS::AccountId}:build/*"
+            - !Ref AWS::NoValue
+          # Needed by run_notebook.py for CI
+          - Effect: Allow
+            Action:
+              - cloudformation:DescribeStacks
+            Resource:
+              - !Ref AWS::StackId
+      Roles:
+        - !Ref NotebookInstanceExecutionRole
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W12
+            reason: ECR GetAuthorizationToken is non resource-specific action
+          - id: W76
+            reason: Need single policy doc for all permissions to better handle Studio.
+  ProcessingJobContainerBuild:
+    Condition: CreateCodeBuildProject
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name: !Sub "${SolutionPrefix}-processing-job-container-build"
+      Description: !Sub "Build docker container for SageMaker Processing job for ${SolutionPrefix}"
+      ServiceRole: !If [CreateCustomSolutionRole, !GetAtt NotebookInstanceExecutionRole.Arn, !Ref IamRole]
+      Source:
+        Type: S3
+        Location: !Sub
+         - "${SolutionsS3BucketNamePrefix}-${AWS::Region}/${SolutionName}/${SourceKey}"
+         - SolutionsS3BucketNamePrefix:
+                !FindInMap [SolutionsS3BucketName, Ref: StackVersion, Prefix]
+           SourceKey: !FindInMap [CodeBuild, ProcessingContainer, S3Key]
+      Environment:
+        ComputeType: BUILD_GENERAL1_MEDIUM
+        Image: aws/codebuild/standard:4.0
+        Type: LINUX_CONTAINER
+        PrivilegedMode: True
+        EnvironmentVariables:
+          - Name: ecr_repository
+            Value: !Ref SageMakerProcessingJobContainerName
+          - Name: region
+            Value: !Ref AWS::Region
+          - Name: account_id
+            Value: !Ref AWS::AccountId
+      Artifacts:
+        Type: NO_ARTIFACTS
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W32
+            reason: overriding encryption requirements for codebuild
+  SolutionAssistantStack:
+    Type: "AWS::CloudFormation::Stack"
+    Properties:
+      TemplateURL: !Sub
+      - "https://${SolutionsS3BucketNamePrefix}-${AWS::Region}.s3.${AWS::Region}.amazonaws.com/${SolutionName}/deployment/solution-assistant/solution-assistant.yaml"
+      - SolutionsS3BucketNamePrefix:
+          Fn::FindInMap: [SolutionsS3BucketName, Ref: StackVersion, Prefix]
+      Parameters:
+        SolutionPrefix: !Ref SolutionPrefix
+        SolutionName: !Ref SolutionName
+        StackName: !Ref AWS::StackName
+        ModelDataBucketName: !Ref ModelDataBucket
+        SolutionsS3BucketName: !Sub
+          - ${SolutionsS3BucketNamePrefix}-${AWS::Region}
+          - SolutionsS3BucketNamePrefix:
+              Fn::FindInMap: [SolutionsS3BucketName, Ref: StackVersion, Prefix]
+        RoleArn: !If [CreateCustomSolutionRole, !GetAtt NotebookInstanceExecutionRole.Arn, !Ref IamRole]
+
+
+Outputs:
+  SageMakerNotebook:
+    Description: "Open Jupyter IDE. This authenticates you against Jupyter."
+    Condition: CreateSageMakerNotebookInstance
+    Value: !Sub "https://${SolutionPrefix}-notebook-instance.notebook.${AWS::Region}.sagemaker.aws/tree/sagemaker/1.Data_Privatization.ipynb"
+  PrivacyStackName:
+    Value: !Ref AWS::StackName
+  SolutionPrefix:
+    Value: !Ref SolutionPrefix
+  AwsAccountId:
+    Value: !Ref AWS::AccountId
+  AwsRegion:
+    Value: !Ref AWS::Region
+  IamRole:
+    Value: !If [CreateCustomSolutionRole, !GetAtt NotebookInstanceExecutionRole.Arn, !Ref IamRole]
+  ModelDataBucket:
+    Value: !Ref ModelDataBucket
+  SolutionsS3Bucket:
+    Value: !FindInMap [SolutionsS3BucketName, Ref: StackVersion, Prefix]
+  ProcessingInstanceType:
+    Value: !FindInMap [ProcessingInstanceType, !Ref "AWS::Region", Type]
+  TrainingInstanceType:
+    Value: !FindInMap [TrainingInstanceType, !Ref "AWS::Region", Type]
+  SolutionName:
+      Description: "The name for the solution, can be used to deploy different versions of the solution."
+      Value: !Ref SolutionName
+  SagemakerMode:
+    Value: !If
+      - CreateSageMakerNotebookInstance
+      - "NotebookInstance"
+      - "Studio"
+  SageMakerProcessingJobContainerBuild:
+    Description: "Code build project for remotely building the SageMaker preprocessing container"
+    Value: !If [CreateCodeBuildProject, !Ref ProcessingJobContainerBuild, "local"]
+  SageMakerProcessingJobContainerName:
+    Description: "The name of the processing job container/image."
+    Value: !Ref SageMakerProcessingJobContainerName
+  TestOutputsS3Bucket:
+    Value: !Ref TestOutputsS3Bucket
+  StackName:
+    Value: !Ref AWS::StackName

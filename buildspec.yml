@@ -1,0 +1,18 @@
+
+version: 0.2
+
+phases:
+  install:
+    runtime-versions:
+      nodejs: 12
+    commands:
+      - echo "nothing to do in install"
+  build:
+    commands:
+      - echo "Starting build `date` in `pwd`"
+      - ls .
+      - chmod +x ./build.sh && ./build.sh $SOLUTION_NAME $BUILD_OUTPUT_BUCKET $BUILD_OUTPUT_REGION $BRANCH
+      - echo "Build completed `date`"
+artifacts:
+  files:
+      - "**/*"
