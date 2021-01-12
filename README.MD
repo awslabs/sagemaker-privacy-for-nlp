@@ -27,7 +27,7 @@ deploy the resources in this project.
     <td>Oregon</td>
     <td>us-west-2</td>
     <td align="center">
-      <a href="https://us-west-2.console.aws.amazon.com/cloudformation/home?region=us-west-2#/stacks/create/review?templateURL=https://sagemaker-solutions-prod-us-west-2.s3-us-west-2.amazonaws.com/sagemaker-privacy-for-nlp/deployment/sagemaker-privacy-for-nlp.yaml&stackName=sagemaker-privacy-for-nlp">
+      <a href="https://us-west-2.console.aws.amazon.com/cloudformation/home?region=us-west-2#/stacks/create/review?templateURL=https://sagemaker-solutions-prod-us-west-2.s3-us-west-2.amazonaws.com/sagemaker-privacy-for-nlp/deployment/sagemaker-privacy-for-nlp.yaml&stackName=sagemaker-soln-pnlp-awslabs">
         <img src="docs/launch_button.svg" height="30">
       </a>
     </td>
