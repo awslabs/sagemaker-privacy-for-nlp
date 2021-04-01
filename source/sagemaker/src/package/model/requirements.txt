@@ -23,9 +23,9 @@ protobuf==3.11.3          # via protobuf3-to-dict, sagemaker
 pyasn1==0.4.8             # via rsa
 pyparsing==2.4.7          # via packaging
 python-dateutil==2.8.1    # via botocore
-pyyaml==5.3.1             # via awscli
+pyyaml==5.4.0             # via awscli
 requests==2.23.0          # via torchtext
-rsa==3.4.2                # via awscli
+rsa==4.1.0                # via awscli
 s3transfer==0.3.3         # via awscli, boto3
 sagemaker==1.57.0         # via -r requirements.in
 scipy==1.4.1              # via sagemaker
