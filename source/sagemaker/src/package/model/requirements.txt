@@ -25,7 +25,7 @@ pyparsing==2.4.7          # via packaging
 python-dateutil==2.8.1    # via botocore
 pyyaml==5.4.0             # via awscli
 requests==2.23.0          # via torchtext
-rsa==4.1.0                # via awscli
+rsa==4.7                  # via awscli
 s3transfer==0.3.3         # via awscli, boto3
 sagemaker==1.57.0         # via -r requirements.in
 scipy==1.4.1              # via sagemaker

@@ -70,7 +70,7 @@ pyyaml==5.4.1
     # via awscli
 requests==2.25.1
     # via torchtext
-rsa==4.5
+rsa==4.7
     # via awscli
 s3transfer==0.3.6
     # via
