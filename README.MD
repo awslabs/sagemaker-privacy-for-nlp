@@ -12,38 +12,17 @@ created by Amazon scientists, [Feyisetan et al.]((https://www.amazon.science/blo
 large-scale text data.
 
 
-## Getting Started with a SageMaker Notebook Instance
+## Getting Started
 
-If launching the solution using the included CloudFormation template, use the following quick-launch link to create a CloudFormation stack and
-deploy the resources in this project.
+You will need an AWS account to use this solution. Sign up for an account [here](https://aws.amazon.com/).
 
-<table>
-  <tr>
-    <th colspan="3">AWS Region</td>
-    <th>AWS CloudFormation</td>
-  </tr>
-  <tr>
-    <td>US West</td>
-    <td>Oregon</td>
-    <td>us-west-2</td>
-    <td align="center">
-      <a href="https://us-west-2.console.aws.amazon.com/cloudformation/home?region=us-west-2#/stacks/create/review?templateURL=https://sagemaker-solutions-prod-us-west-2.s3-us-west-2.amazonaws.com/sagemaker-privacy-for-nlp/deployment/sagemaker-privacy-for-nlp.yaml&stackName=sagemaker-soln-pnlp-awslabs">
-        <img src="docs/launch_button.svg" height="30">
-      </a>
-    </td>
-  </tr>
-</table>
+To run this JumpStart 1P Solution and have the infrastructure deploy to your AWS account you will need to create an active SageMaker Studio instance (see Onboard to Amazon SageMaker Studio). When your Studio instance is Ready, use the instructions in SageMaker JumpStart to 1-Click Launch the solution.
 
-On the stack creation page, check the box to acknowledge creation of IAM resources,
-and click Create Stack.
+The solution artifacts are included in this GitHub repository for reference.
 
+*Note*: Solutions are available in most regions including us-west-2, and us-east-1.
 
-Once stack creation has completed successfully,
-click the 'NotebookSourceCode' link on the 'Outputs' tab. Click '1. Data Privatization.ipynb' and follow the instruction inside the notebook.
-
-**Caution**: Cloning this GitHub repository and running the code manually could lead to unexpected issues! We recommend you use the AWS
-CloudFormation template. You'll get an Amazon SageMaker Notebook instance that's been correctly setup and configured to access the other resources in the solution.
-
+**Caution**: Cloning this GitHub repository and running the code manually could lead to unexpected issues! Use the AWS CloudFormation template. You'll get an Amazon SageMaker Notebook instance that's been correctly setup and configured to access the other resources in the solution.
 
 ## Architecture
 
