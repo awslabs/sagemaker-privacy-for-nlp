@@ -35,7 +35,7 @@ smdebug-rulesconfig==0.1.2  # via sagemaker
 torch==1.5.0              # via -r requirements.in, torchtext
 torchtext==0.6.0          # via -r requirements.in
 tqdm==4.46.0              # via -r requirements.in, torchtext
-urllib3==1.25.9           # via botocore, requests
+urllib3
 zipp==3.1.0               # via importlib-metadata
 
 # The following packages are considered to be unsafe in a requirements file:
